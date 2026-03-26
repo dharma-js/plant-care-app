@@ -1,0 +1,180 @@
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import api from '../services/api';
+import { ArrowLeft, Save, Camera, X } from 'lucide-react';
+import { compressImage } from '../utils/imageUtils';
+
+const AddPlant = () => {
+    const [formData, setFormData] = useState({
+        plantName: '',
+        plantType: '',
+        wateringFrequency: 7,
+        lastWateredDate: new Date().toISOString().split('T')[0],
+        notes: '',
+        image: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const navigate = useNavigate();
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleImageCapture = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const compressedBase64 = await compressImage(file);
+            setFormData({ ...formData, image: compressedBase64 });
+        }
+    };
+
+    const removeImage = () => {
+        setFormData({ ...formData, image: '' });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        try {
+            await api.post('/plants', formData);
+            navigate('/');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Error adding plant');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="max-w-2xl mx-auto">
+            <div className="mb-6">
+                <Link to="/" className="inline-flex items-center text-slate-500 hover:text-emerald-600 transition-colors bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 font-medium">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Back to Dashboard
+                </Link>
+            </div>
+
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-slate-800">Add New Plant</h1>
+                    <p className="text-slate-500 mt-2">Enter the details for your new green friend.</p>
+                </div>
+
+                {error && (
+                    <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm flex items-center">
+                        <span className="font-medium">{error}</span>
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700">Plant Name *</label>
+                            <input
+                                type="text"
+                                name="plantName"
+                                required
+                                value={formData.plantName}
+                                onChange={handleChange}
+                                placeholder="e.g. Monstera Deliciosa, Fred"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700">Plant Type *</label>
+                            <input
+                                type="text"
+                                name="plantType"
+                                required
+                                value={formData.plantType}
+                                onChange={handleChange}
+                                placeholder="e.g. Tropical, Succulent"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700">Watering Frequency (days) *</label>
+                            <input
+                                type="number"
+                                name="wateringFrequency"
+                                required
+                                min="1"
+                                value={formData.wateringFrequency}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700">Last Watered Date *</label>
+                            <input
+                                type="date"
+                                name="lastWateredDate"
+                                required
+                                value={formData.lastWateredDate}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white text-slate-700"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Plant Photo</label>
+                        <input id="file-upload" name="file-upload" type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleImageCapture} />
+                        
+                        {!formData.image ? (
+                            <label htmlFor="file-upload" className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer w-full group">
+                                <div className="space-y-1 text-center">
+                                    <Camera className="mx-auto h-12 w-12 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                    <div className="flex text-sm text-slate-600 justify-center mt-2">
+                                        <span className="font-medium text-emerald-600 group-hover:text-emerald-500">Take a photo</span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">Capture using your device camera</p>
+                                </div>
+                            </label>
+                        ) : (
+                            <div className="relative mt-2 w-full max-w-xs mx-auto md:mx-0 group">
+                                <label htmlFor="file-upload" className="cursor-pointer block relative">
+                                    <img src={formData.image} alt="Preview" className="rounded-xl shadow-sm object-cover h-48 w-full group-hover:opacity-90 transition-opacity" />
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/40 rounded-xl transition-opacity">
+                                        <Camera className="text-white w-10 h-10" />
+                                    </div>
+                                </label>
+                                <button type="button" onClick={(e) => { e.preventDefault(); removeImage(); }} className="absolute -top-2 -right-2 bg-white rounded-full p-1.5 shadow-md border border-slate-200 text-slate-600 hover:text-red-500 flex items-center justify-center z-10 transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Notes</label>
+                        <textarea
+                            name="notes"
+                            rows="3"
+                            value={formData.notes}
+                            onChange={handleChange}
+                            placeholder="Likes bright indirect light..."
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-slate-50 focus:bg-white resize-none"
+                        ></textarea>
+                    </div>
+
+                    <div className="pt-4 flex gap-4">
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 px-6 rounded-xl transition-colors shadow-sm focus:ring-4 focus:ring-emerald-200 disabled:opacity-70 flex items-center justify-center text-lg"
+                        >
+                            {loading ? 'Adding...' : <><Save className="w-5 h-5 mr-2" /> Save Plant</>}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default AddPlant;
