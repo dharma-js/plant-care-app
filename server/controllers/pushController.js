@@ -4,43 +4,47 @@ const webPush = require('web-push');
 // Subscribe user/guest to push notifications
 exports.subscribe = async (req, res) => {
     try {
+        console.log('Incoming Subscription Request Body:', JSON.stringify(req.body, null, 2));
         const { subscription, anonymousId, userId, device } = req.body;
 
         if (!subscription || !subscription.endpoint) {
+            console.error('Subscription Error: Missing endpoint in request body');
             return res.status(400).json({ error: 'Invalid subscription object' });
         }
 
         // Use findOneAndUpdate with upsert to atomically prevent duplicate key (E11000) errors
-        // during simultaneous requests (e.g. React Strict Mode double hooks).
         const updateData = {
             keys: subscription.keys,
             device,
             isActive: true
         };
         
+        console.log('Processed Update Data:', JSON.stringify(updateData, null, 2));
+
         if (userId) {
-            // Development Cleanup: Delete all old subscriptions for this user across different test browsers
-            // ensuring this user only ever has 1 active row strictly tied to their latest session.
+            console.log('Cleaning up old subscriptions for userId:', userId);
             await PushSubscription.deleteMany({ userId, endpoint: { $ne: subscription.endpoint } });
             updateData.userId = userId;
         }
         
         if (anonymousId) {
-            // Also clean up guest test sessions
+            console.log('Cleaning up old subscriptions for anonymousId:', anonymousId);
             await PushSubscription.deleteMany({ anonymousId, endpoint: { $ne: subscription.endpoint }, userId: null });
             updateData.anonymousId = anonymousId;
         }
 
+        console.log('Attempting DB Upsert for endpoint:', subscription.endpoint);
         const sub = await PushSubscription.findOneAndUpdate(
             { endpoint: subscription.endpoint },
             { $set: updateData },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
+            { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
         );
 
+        console.log('Subscription successfully saved/updated:', sub._id);
         res.status(200).json({ message: 'Subscription processed successfully', data: sub });
     } catch (error) {
-        console.error('Subscription Error:', error);
-        res.status(500).json({ error: 'Internal server error while subscribing' });
+        console.error('CRITICAL Subscription Error:', error);
+        res.status(500).json({ error: 'Internal server error while subscribing', detail: error.message });
     }
 };
 
