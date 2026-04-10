@@ -68,7 +68,7 @@ export const initPushNotifications = async (userId = null, showAlertDialog = fal
 
         // 5. Send to backend
         await api.post(`${PUSH_API_URL}/subscribe`, {
-            subscription,
+            subscription: subscription.toJSON(),
             anonymousId,
             userId,
             device: navigator.userAgent
